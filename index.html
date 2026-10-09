@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="耗材盤點">
+<meta name="theme-color" content="#f5f5f2">
+<title>耗材盤點</title>
+<style>
+  :root{
+    --bg:#f5f5f2; --card:#fff; --text:#222; --sub:#888; --line:#e4e2dc;
+    --accent:#2f6f5e; --accent-soft:#e1eeea; --red:#c8402f; --red-soft:#fbe5e1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1a1b1a; --card:#262725; --text:#eee; --sub:#999; --line:#383936;
+      --accent:#6fbfa6; --accent-soft:#233a33; --red:#ef7b6b; --red-soft:#46292a; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;font-size:16px}
+  body{padding:env(safe-area-inset-top) 16px calc(90px + env(safe-area-inset-bottom))}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px}
+  h1{font-size:24px;margin:0}
+  .sub{color:var(--sub);font-size:13px;margin-top:2px}
+  .icon-btn{border:none;background:var(--card);color:var(--text);width:40px;height:40px;border-radius:50%;
+    font-size:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .search{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card);color:var(--text);font-size:16px;margin:8px 0 12px}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:10px 10px 10px 12px;
+    border-left:5px solid transparent}
+  .row.low{border-left-color:var(--red)}
+  .info{flex:1;min-width:0}
+  .name{font-weight:600;font-size:15px;line-height:1.3}
+  .no{color:var(--sub);font-weight:400;margin-right:4px}
+  .use{color:var(--sub);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .setting{font-size:12px;color:var(--accent);margin-top:3px}
+  .setting b{font-weight:700}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:5px;margin-top:4px;background:var(--red-soft);color:var(--red)}
+  .tag.gray{background:var(--line);color:var(--sub)}
+  .stepper{display:flex;align-items:center;gap:4px;flex:none}
+  .stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);
+    color:var(--text);font-size:20px;padding:0}
+  .stepper input{width:48px;height:38px;text-align:center;border:1px solid var(--line);border-radius:10px;
+    background:var(--card);color:var(--text);font-size:17px;font-weight:600;padding:0}
+  .unit{font-size:12px;color:var(--sub);width:22px;text-align:left}
+  .add-item{width:100%;padding:13px;margin-top:10px;border:1px dashed var(--line);border-radius:12px;
+    background:none;color:var(--accent);font-size:15px}
+  .empty{text-align:center;color:var(--sub);padding:50px 20px;line-height:1.7}
+  /* 叫貨清單 */
+  .order{background:var(--card);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .order .amt{font-size:18px;font-weight:700;color:var(--red);flex:none;text-align:right}
+  .order .amt small{display:block;font-size:11px;font-weight:400;color:var(--sub)}
+  .actions{display:flex;gap:8px;margin:4px 0 12px}
+  .btn{flex:1;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:600}
+  .btn.light{background:var(--accent-soft);color:var(--accent)}
+  /* 底部分頁 */
+  nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);z-index:5}
+  nav button{flex:1;border:none;background:none;color:var(--sub);padding:10px 0 8px;font-size:13px;position:relative}
+  nav button b{display:block;font-size:22px;margin-bottom:1px;font-weight:400}
+  nav button.on{color:var(--accent);font-weight:600}
+  .badge{position:absolute;top:4px;left:calc(50% + 8px);background:var(--red);color:#fff;font-size:11px;
+    min-width:18px;height:18px;line-height:18px;border-radius:9px;padding:0 5px}
+  /* 面板 */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:10}
+  .mask.show{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:20px 20px 0 0;max-height:92vh;
+    overflow-y:auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);
+    transition:transform .25s;z-index:11}
+  .sheet.show{transform:none}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .sheet-head h2{font-size:18px;margin:0}
+  .txt-btn{border:none;background:none;color:var(--accent);font-size:16px;padding:6px;min-width:44px}
+  label{display:block;font-size:13px;color:var(--sub);margin:12px 0 5px}
+  .field{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+    color:var(--text);font-size:16px;font-family:inherit}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .hint{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5}
+  .save{width:100%;margin-top:18px;padding:14px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;font-weight:600}
+  .del{width:100%;margin-top:10px;padding:12px;border:none;border-radius:12px;background:var(--red-soft);color:var(--red);font-size:15px}
+  .menu-btn{width:100%;text-align:left;padding:14px;border:none;border-radius:12px;background:var(--card);color:var(--text);font-size:16px;margin-bottom:8px}
+  .note{color:var(--sub);font-size:13px;line-height:1.6;margin-top:6px}
+  .row.pick{cursor:pointer}
+  .check{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+  .row.sel{background:var(--red-soft)}
+  .row.sel .check{background:var(--red);border-color:var(--red)}
+  .delbar{position:fixed;left:0;right:0;bottom:0;display:none;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:var(--card);border-top:1px solid var(--line);z-index:6}
+  .delbar.show{display:flex}
+  .delbar button{flex:1;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:600}
+  .delbar .cancel{background:var(--line);color:var(--text)}
+  .delbar .go{background:var(--red);color:#fff}
+  .delbar .go:disabled{opacity:.4}
+  .header-btns{display:flex;gap:8px}
+  .topbar{position:sticky;top:0;z-index:4;background:var(--bg);padding-top:env(safe-area-inset-top);margin:0 -16px;padding-left:16px;padding-right:16px}
+  .topbar .search{margin:4px 0 8px}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);padding:7px 13px;border-radius:999px;font-size:14px}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip small{opacity:.7;margin-left:3px}
+  .icon-btn.on{background:var(--accent);color:#fff}
+  .modebar{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:10px;line-height:1.5}
+  .setbox{display:flex;gap:6px;flex:none}
+  .setbox label{margin:0;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--sub);gap:2px}
+  .setbox input{width:56px;height:42px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--bg);
+    color:var(--text);font-size:18px;font-weight:600;padding:0}
+  .setbox input:focus{outline:2px solid var(--accent);background:var(--card)}
+  .row.saved{animation:flash .6s}
+  @keyframes flash{from{background:var(--accent-soft)}to{background:var(--card)}}
+  .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
+    padding:10px 18px;border-radius:20px;font-size:14px;display:none;z-index:20}
+</style>
+</head>
+<body>
+
+<!-- 盤點頁 -->
+<section id="pageCount">
+  <header>
+    <div><h1>盤點 <small style="font-size:12px;color:var(--sub);font-weight:400">v1006-B</small></h1><div class="sub" id="countSub"></div></div>
+    <div class="header-btns">
+      <button class="icon-btn" id="setModeBtn" aria-label="設定下限">⚙️</button>
+      <button class="icon-btn" id="delModeBtn" aria-label="刪除品項">🗑</button>
+      <button class="icon-btn" id="menuBtn" aria-label="選單">⋯</button>
+    </div>
+  </header>
+  <div class="topbar">
+    <input class="search" id="search" type="search" placeholder="搜尋品名，或直接打編號（例：24）">
+    <div class="chips" id="chips"></div>
+  </div>
+  <div id="modebar"></div>
+  <div class="list" id="countList"></div>
+  <button class="add-item" id="addBtn">＋ 新增品項</button>
+  <div style="text-align:center;color:var(--sub);font-size:12px;margin-top:16px">版本 1006-B</div>
+</section>
+
+<!-- 叫貨頁 -->
+<section id="pageOrder" hidden>
+  <header>
+    <div><h1>需叫貨</h1><div class="sub" id="orderSub"></div></div>
+  </header>
+  <div class="actions">
+    <button class="btn" id="copyOrder">複製叫貨清單</button>
+    <button class="btn light" id="csvOrder">匯出 Excel</button>
+  </div>
+  <div class="list" id="orderList"></div>
+</section>
+
+<nav>
+  <button id="tabCount" class="on"><b>📋</b>盤點</button>
+  <button id="tabOrder"><b>🛒</b>需叫貨<span class="badge" id="badge" hidden></span></button>
+</nav>
+
+<div class="delbar" id="delbar">
+  <button class="cancel" id="delCancel">取消</button>
+  <button class="go" id="delGo" disabled>刪除</button>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<!-- 編輯品項 -->
+<div class="sheet" id="editSheet">
+  <div class="sheet-head">
+    <button class="txt-btn" data-close>取消</button>
+    <h2 id="editTitle">編輯品項</h2>
+    <button class="txt-btn" id="saveTop" style="font-weight:700">儲存</button>
+  </div>
+  <div class="grid">
+    <div><label>編號</label><input class="field" id="fNo" inputmode="numeric"></div>
+    <div><label>單位</label><input class="field" id="fUnit" placeholder="盒、個、包…"></div>
+  </div>
+  <label>品名</label>
+  <input class="field" id="fName">
+  <label>用途／站別</label>
+  <input class="field" id="fUse">
+  <div class="grid">
+    <div><label>最低庫存</label><input class="field" id="fMin" type="number" inputmode="numeric" min="0" enterkeyhint="done"></div>
+    <div><label>每次叫貨量</label><input class="field" id="fOrder" type="number" inputmode="numeric" min="0" enterkeyhint="done"></div>
+  </div>
+  <div class="hint">盤點數量「少於」最低庫存，就會出現在需叫貨清單。每次叫貨量留空時，會自動補到最低庫存。</div>
+  <button class="save" id="saveBtn">儲存</button>
+  <button class="del" id="delBtn">刪除這個品項</button>
+</div>
+
+<!-- 選單 -->
+<div class="sheet" id="menuSheet">
+  <div class="sheet-head">
+    <span style="min-width:44px"></span><h2>設定與備份</h2>
+    <button class="txt-btn" data-close>完成</button>
+  </div>
+  <button class="menu-btn" id="newRound">🔄 開始新一輪盤點（清空數量）</button>
+  <button class="menu-btn" id="exportAll">📊 匯出全部盤點結果（Excel）</button>
+  <button class="menu-btn" id="importCsv">📥 從 Excel（CSV）匯入品項</button>
+  <button class="menu-btn" id="backup">💾 備份資料</button>
+  <button class="menu-btn" id="restore">♻️ 從備份還原</button>
+  <button class="menu-btn" id="backupText">📋 備份成文字（存檔沒反應時用）</button>
+  <button class="menu-btn" id="restoreText">📋 貼上文字還原</button>
+  <input type="file" id="csvInput" accept=".csv,text/csv" hidden>
+  <input type="file" id="jsonInput" accept=".json,application/json" hidden>
+  <div class="note">匯入 CSV 時，第一列請放標題：品名、用途、單位、最低庫存、叫貨量、數量（有的欄位就好）。同品名會更新，新品名會新增。<br>資料只存在這支手機裡，建議定期備份到「檔案」App。</div>
+</div>
+
+<div class="sheet" id="textSheet">
+  <div class="sheet-head">
+    <span style="min-width:44px"></span><h2 id="textTitle">備份文字</h2>
+    <button class="txt-btn" data-close>關閉</button>
+  </div>
+  <div class="note" id="textNote"></div>
+  <textarea class="field" id="textBox" style="min-height:220px;font-size:12px;font-family:monospace"></textarea>
+  <button class="save" id="textAct">全部複製</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- 預設品項（來自交貨資料，共 141 項，依原表順序重新編號） ----------
+const SEED = [
+  ['小標籤','Coater 站 / sample 用','包',5],
+  ['大標籤','Printing 站 / sample 用','包',5],
+  ['黃標','Coater 站 / sample 用；印刷站 異常使用','包',5],
+  ['紅標','印刷站使用'],
+  ['濾毒罐備品','塗佈用 CA-104N II'],
+  ['濾毒罐備品','塗佈用 3M-3311-k100'],
+  ['濾毒罐備品','濕製程用 TS/OV'],
+  ['軟式護目鏡','Dopant 用'],
+  ['安全護面罩','濕製程破損更換'],
+  ['新版 Pste 標籤','印刷專用（一張紙 10 枚貼紙）','張',50],
+  ['磁鐵掛勾','濕製程溶劑室使用'],
+  ['K3200 電極層標籤','Coater 站'],
+  ['K2500 空白層標籤','Coater 站'],
+  ['K3500 電極層標籤','Coater 站'],
+  ['K6000 電極層標籤','Coater 站'],
+  ['85*100 Label 標籤捲—印刷用','印刷站 庫房．印刷好瓷膜標籤，需求量多','捲',4],
+  ['10*100 Label 標籤捲—印刷用','濕製程．Coater．印刷站 標籤'],
+  ['Label 機碳帶(雙軸層)','Coater．印刷站 標籤機專用','捲',2],
+  ['COATER Punch 鋼刀','Coater 取樣瓷膜用'],
+  ['深藍色圍裙(藏青色)','塗佈站．印刷站髒污更換'],
+  ['大黃手套','濕製程用'],
+  ['小白','印刷站洗網版用'],
+  ['小黃','濕製程用（清洗手套）','雙',10],
+  ['紫色手套 M(NBR)','NCP + COATER','盒',3],
+  ['紫色手套 L(NBR)','早班塗佈站需求','盒',1],
+  ['紫色手套 XL(NBR)','早班印刷站 + 塗佈站 + 濕製程','盒',1],
+  ['活性碳','印刷站 + COATER 站用','盒',3],
+  ['N95 口罩','印刷站 + COATER 站用','盒'],
+  ['防毒面具(3M)','塗佈站'],
+  ['防毒面具(TW01S)','濕製程-新人'],
+  ['透明袋子(小的透明)','濾心回收袋 透明','個',2],
+  ['垃圾袋 超特大 95*105cm','垃圾袋','個',2],
+  ['雙面膠(中)','COATER 用'],
+  ['影印白紙','NCP + COATER + B3 + 濕製程','包',1],
+  ['透明膠帶','NCP + COATER + 網版室'],
+  ['BET 專用 U 型管','Dopant 專用-破裂更換'],
+  ['BET 專用 紙吸管','Dopant 專用'],
+  ['BET 專用 藥粉包紙','Dopant 專用'],
+  ['滴管','濕製程使用','包',2],
+  ['鋁盤','濕製程用','包',1],
+  ['止洩帶','濕製程','條',2],
+  ['印刷專用 黑色膠帶','包裝 Paste 罐'],
+  ['小刀片','濕製程 + 印刷站 + 塗佈站','盒',2],
+  ['磁鐵貼','更新標示卡使用'],
+  ['訂書針','濕製程．塗佈站．印刷站使用'],
+  ['印刷用 A5 紙','NCP X-Ray 印製用'],
+  ['地墊','COATER 用 + NCP','張',4],
+  ['計時器','濕製程損壞更換'],
+  ['3號電池(碳鋅電池)','濕製程、塗佈站、印刷站，時鐘用'],
+  ['4號電池','濕製程．塗佈站 計時器使用'],
+  ['拖把頭','濕製程用'],
+  ['藍色三角刮板','印刷站刮 paste 用 / 淘舊換新'],
+  ['印刷用刮刀','印刷站刮 paste 空罐用'],
+  ['豆豆貼(小-顏色一致即可)','印刷站 離心式 paste 專用','包',3],
+  ['藍色細-800 奇異筆','早班（細的奇異筆）'],
+  ['藍色粗-600 奇異筆','早班（粗的奇異筆）'],
+  ['黑色細-800 奇異筆','中/夜班（細的奇異筆）'],
+  ['黑色粗-600 奇異筆','中/夜班（粗的奇異筆）'],
+  ['藍筆','濕製程．印刷站','支',2],
+  ['黑筆','濕製程．印刷站'],
+  ['美工刀','舊換新'],
+  ['打印機 色帶(ERC-09)','COATER + 濕製程 打印機專用'],
+  ['打印機 捲紙','COATER + 濕製程 打印機專用','捲',10],
+  ['白板筆-藍色','網版室'],
+  ['白板筆-黑色','網版室'],
+  ['白板筆-綠色','網版室'],
+  ['護貝膜','製作標示卡用'],
+  ['垃圾桶 大型','新 Hirano 使用'],
+  ['乙醇分裝罐','Coater．濕製程．NCP 更換','罐',10],
+  ['菜瓜布','濕製程．印刷站'],
+  ['鋼刷','濕製程清洗用'],
+  ['連身式無塵衣 尺寸 2XL','濕製程'],
+  ['連身式無塵衣 尺寸 L','印刷站'],
+  ['袍式無塵衣 尺寸 4XL','濕製程'],
+  ['塑膠量杯 3000CC','濕製程汰舊換新'],
+  ['安全鞋 尺寸 25 號','塗佈站'],
+  ['拭鏡紙','粒徑機保養使用'],
+  ['7號夾鏈袋','COATER 用'],
+  ['9號夾鏈袋','COATER 用'],
+  ['12號夾鏈袋','塗佈站、印刷站-Sample 與表單用','包',1],
+  ['矽膠刮刀','印刷站-稽核檢查用'],
+  ['識別證塑膠套','更換破損'],
+  ['L形夾(透明)','破損更換'],
+  ['多孔文件套(透明)','更換破損'],
+  ['膠水','濕製程使用'],
+  ['塑膠漏斗(大) 直徑約 25 公分','濕製程損壞更換'],
+  ['釘書機','印刷站-損壞更換'],
+  ['拖把桿','破損更換'],
+  ['螢光筆','濕製程．COATER 用'],
+  ['橘色軟式耳塞','Coater．NCP 更換備品'],
+  ['紅色粗-600 奇異筆','標示 SDS 用'],
+  ['雜誌架','斷裂更換'],
+  ['魔毯','濕製程．Coater．NCP 清潔用'],
+  ['3M 無塵靜電拖把紙','產線內使用'],
+  ['1號夾鏈袋','量測 BET 使用'],
+  ['直式木板夾','破損、發霉更換'],
+  ['九宮格貼紙','B3 用'],
+  ['U形夾(透明)','更換破損髒污使用'],
+  ['磁鐵條(30 公分)','公佈欄用'],
+  ['旋轉蠟筆','濕製程．塗佈站．印刷站'],
+  ['事務剪刀',''],
+  ['鐵剪刀','網版室剪刀更換'],
+  ['抹布','濕製程更換使用','張',5],
+  ['魔毯桿','濕製程．塗佈站．印刷站-清潔機台用'],
+  ['15、30、45 公分鐵尺','塗佈站更換-45 公分鐵尺'],
+  ['EPSON 打印機 色帶(ERC-38)','均質機 打印機專用'],
+  ['室內掃把','塗佈 & 濕製程-汰舊換新','把',1],
+  ['畚箕(金屬製)','破損更換'],
+  ['小垃圾袋 45*55cm','印刷站使用'],
+  ['平光眼鏡','塗佈站-髒污、破損更換'],
+  ['打孔器(A4 紙用)','塗佈站損壞更換'],
+  ['防切割美工刀',''],
+  ['防切割美工刀 刀片','塗佈站機台使用'],
+  ['防切割指套','新人．多能工撥發'],
+  ['直式塑膠板','（木製會發霉）'],
+  ['鉛筆','領班使用'],
+  ['計算機','塗佈站使用（NG 更換）'],
+  ['500cc 玻璃燒杯','破裂更換'],
+  ['白色無塵帽','塗佈站'],
+  ['淺黃色 A4 紙','製作標示卡用'],
+  ['黃色地線膠帶','破損（Sony）重貼'],
+  ['分析篩(ASTM Number 150)','Dopant 過篩用'],
+  ['粉紅色長版手套','濕製程更換'],
+  ['Barcode 機','濕製程粒徑機申請更換'],
+  ['3M 殘膠清潔劑','清潔使用','罐',1],
+  ['鈕扣電池(CR2450)','溫溼度機台用'],
+  ['3M 無塵紙(拖把用)','F1 使用'],
+  ['紅筆','濕製程．印刷站'],
+  ['塑鋼土','篩網使用'],
+  ['油漆刷(50.8mm)','過篩鋯球用、清潔機台邊溝'],
+  ['開明事務帶(45 公分)','綁標示卡用'],
+  ['小掃把組','印刷站清潔用'],
+  ['黃色耳罩','廢溶劑回收機-操作人員申請'],
+  ['白鐵膏刀(木柄)','印刷站-稽核檢查用'],
+  ['綠色切割墊 A4','塗佈站-裁切鐵氟龍墊片使用'],
+  ['隔熱手套','廢溶劑回收機 ×1、烤箱使用破舊更換 ×1'],
+  ['篩網 網目 0.88',''],
+  ['篩網 網目 150',''],
+  ['WD-40','濕製程使用'],
+  ['104 硬化劑','網版室','罐',3],
+  ['105 南寶樹脂','網版室','罐',3],
+].map(([name,use,unit,order], n) => ({
+  id:'s'+(n+1), no:n+1, name, use, unit:unit||'', min:1, order:order ?? null, qty:null, counted:0
+}));
+
+// ---------- 資料庫（存在手機本機） ----------
+const STORE='items'; let db;
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('supply-count',1);
+  r.onupgradeneeded=()=>{ r.result.createObjectStore(STORE,{keyPath:'id'}); r.result.createObjectStore('meta'); };
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function os(name,mode){ return db.transaction(name,mode).objectStore(name); }
+const req = r => new Promise(res => r.onsuccess = () => res(r.result));
+const getAll = () => req(os(STORE,'readonly').getAll());
+const putItem = it => req(os(STORE,'readwrite').put(it));
+const delItem = id => req(os(STORE,'readwrite').delete(id));
+const getMeta = k => req(os('meta','readonly').get(k));
+const setMeta = (k,v) => req(os('meta','readwrite').put(v,k));
+
+// ---------- 狀態與工具 ----------
+let items=[], query='', editing=null, delMode=false, setMode=false, station='全部', picked=new Set();
+const STATIONS = [
+  ['濕製程',['濕製程']], ['塗佈 / Coater',['塗佈','coater','coatre']], ['印刷站',['印刷','printing','paste']],
+  ['網版室',['網版']], ['NCP',['ncp']], ['Dopant / BET',['dopant','bet']]
+];
+const inStation = (i, s) => {
+  const t = (i.name+' '+i.use).toLowerCase();
+  if(s === '全部') return true;
+  if(s === '其他') return !STATIONS.some(([,ks]) => ks.some(k => t.includes(k)));
+  return STATIONS.find(([n]) => n === s)[1].some(k => t.includes(k));
+};
+function filtered(){
+  const q = query.trim().toLowerCase();
+  const isNum = /^\d+$/.test(q);
+  return items.filter(i => inStation(i, station) &&
+      (!q || (isNum && i.no === Number(q)) || (i.name+' '+i.use).toLowerCase().includes(q)))
+    .sort((a,b) => isNum ? ((b.no===Number(q)) - (a.no===Number(q))) || sortByNo(a,b) : sortByNo(a,b));
+}
+function renderChips(){
+  const names = ['全部', ...STATIONS.map(s => s[0]), '其他'];
+  $('chips').innerHTML = names.map(n => `<button class="chip ${n===station?'on':''}" data-st="${esc(n)}">${esc(n)}<small>${items.filter(i=>inStation(i,n)).length}</small></button>`).join('');
+}
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isLow = i => i.qty !== null && i.min > 0 && i.qty < i.min;
+const need = i => i.order ? i.order : Math.max(i.min - (i.qty||0), 1);
+const sortByNo = (a,b) => (a.no ?? 9999) - (b.no ?? 9999) || a.name.localeCompare(b.name);
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',1800); }
+function today(){ const d=new Date(); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; }
+
+// ---------- 畫面 ----------
+function render(){ renderCount(); renderOrder(); }
+
+function renderCount(){
+  const done = items.filter(i => i.qty !== null).length;
+  $('countSub').textContent = `已盤點 ${done} / ${items.length} 項`;
+  renderChips();
+  const list = filtered();
+  $('modebar').innerHTML = setMode ? `<div class="modebar">⚙️ 設定模式：直接在右邊輸入「下限」和「叫貨」，<b>打完自動儲存</b>，按鍵盤「下一項」會跳到下一格。完成後再按一次 ⚙️。</div>` : '';
+  if(setMode){
+    const done = items.filter(i => i.set).length;
+    $('countSub').textContent = `設定模式（已設定 ${done} / ${items.length} 項）`;
+    $('countList').innerHTML = list.length ? list.map(i => `
+    <div class="row" data-id="${i.id}">
+      <div class="info">
+        <div class="name">${i.no!=null?`<span class="no">${i.no}</span>`:''}${esc(i.name)}</div>
+        <div class="use">${esc(i.use)}${i.unit?`・單位 ${esc(i.unit)}`:''}</div>
+      </div>
+      <div class="setbox">
+        <label>下限<input type="number" inputmode="numeric" min="0" enterkeyhint="next" data-f="min" value="${i.min}"></label>
+        <label>叫貨<input type="number" inputmode="numeric" min="0" enterkeyhint="next" data-f="order" value="${i.order ?? ''}" placeholder="自動"></label>
+      </div>
+    </div>`).join('') : `<div class="empty">找不到符合的品項</div>`;
+    return;
+  }
+  if(delMode){
+    $('countSub').textContent = `點選要刪除的品項（已選 ${picked.size} 項）`;
+    $('countList').innerHTML = list.length ? list.map(i => `
+    <div class="row pick ${picked.has(i.id)?'sel':''}" data-id="${i.id}">
+      <div class="check">${picked.has(i.id)?'✓':''}</div>
+      <div class="info">
+        <div class="name">${i.no!=null?`<span class="no">${i.no}</span>`:''}${esc(i.name)}</div>
+        <div class="use">${esc(i.use)}</div>
+      </div>
+    </div>`).join('') : `<div class="empty">找不到符合的品項</div>`;
+    $('delGo').disabled = !picked.size; $('delGo').textContent = picked.size ? `刪除 ${picked.size} 項` : '刪除';
+    return;
+  }
+  $('countList').innerHTML = list.length ? list.map(i => `
+    <div class="row ${isLow(i)?'low':''}" data-id="${i.id}">
+      <div class="info" data-edit>
+        <div class="name">${i.no!=null?`<span class="no">${i.no}</span>`:''}${esc(i.name)}</div>
+        <div class="use">${esc(i.use)}</div>
+        <div class="setting">下限 <b>${i.min}</b>${esc(i.unit)}・每次叫 <b>${i.order ?? '自動'}</b>${i.order!=null?esc(i.unit):''}</div>
+        ${isLow(i) ? `<span class="tag">需叫貨</span>` : i.qty===null ? `<span class="tag gray">未盤點</span>` : ''}
+      </div>
+      <div class="stepper">
+        <button data-step="-1">−</button>
+        <input type="number" inputmode="numeric" min="0" value="${i.qty ?? ''}" placeholder="–">
+        <button data-step="1">＋</button>
+      </div>
+      <span class="unit">${esc(i.unit)}</span>
+    </div>`).join('') : `<div class="empty">找不到符合的品項</div>`;
+}
+
+function renderOrder(){
+  const low = items.filter(isLow).sort(sortByNo);
+  $('badge').hidden = !low.length; $('badge').textContent = low.length;
+  const notDone = items.filter(i => i.qty === null).length;
+  $('orderSub').textContent = notDone ? `還有 ${notDone} 項未盤點` : '全部已盤點';
+  $('orderList').innerHTML = low.length ? low.map(i => `
+    <div class="order">
+      <div class="info">
+        <div class="name">${i.no!=null?`<span class="no">${i.no}</span>`:''}${esc(i.name)}</div>
+        <div class="use">現有 ${i.qty} ${esc(i.unit)}・最低 ${i.min} ${esc(i.unit)}</div>
+      </div>
+      <div class="amt">${need(i)} ${esc(i.unit)}<small>建議叫貨</small></div>
+    </div>`).join('') : `<div class="empty">目前沒有需要叫貨的品項 👍</div>`;
+}
+
+// ---------- 盤點操作 ----------
+async function setQty(id, v){
+  const it = items.find(i => i.id === id); if(!it) return;
+  it.qty = (v === '' || v === null || isNaN(v)) ? null : Math.max(0, Math.round(v));
+  it.counted = Date.now();
+  await putItem(it);
+}
+$('countList').addEventListener('click', async e => {
+  const row = e.target.closest('.row'); if(!row) return;
+  if(delMode){ const id=row.dataset.id; picked.has(id)?picked.delete(id):picked.add(id); renderCount(); return; }
+  const step = e.target.closest('[data-step]');
+  if(step){
+    const it = items.find(i => i.id === row.dataset.id);
+    await setQty(it.id, (it.qty ?? 0) + Number(step.dataset.step));
+    renderCount(); renderOrder(); return;
+  }
+  if(e.target.closest('[data-edit]')) openEdit(items.find(i => i.id === row.dataset.id));
+});
+$('countList').addEventListener('change', async e => {
+  if(e.target.tagName !== 'INPUT') return;
+  const row = e.target.closest('.row');
+  if(e.target.dataset.f){
+    const it = items.find(i => i.id === row.dataset.id), v = e.target.value;
+    if(e.target.dataset.f === 'min') it.min = v === '' ? 0 : Math.max(0, Number(v));
+    else it.order = v === '' ? null : Math.max(0, Number(v));
+    it.set = true; await putItem(it);
+    row.classList.remove('saved'); void row.offsetWidth; row.classList.add('saved');
+    $('countSub').textContent = `設定模式（已設定 ${items.filter(i=>i.set).length} / ${items.length} 項）`;
+    renderOrder(); return;
+  }
+  await setQty(row.dataset.id, e.target.value === '' ? '' : Number(e.target.value));
+  renderCount(); renderOrder();
+});
+$('search').oninput = e => { query = e.target.value; renderCount(); };
+$('chips').onclick = e => { const c = e.target.closest('.chip'); if(!c) return; station = c.dataset.st; renderCount(); window.scrollTo(0,0); };
+// 設定模式：按鍵盤「下一項／Enter」跳到下一格
+$('countList').addEventListener('keydown', e => {
+  if(e.key !== 'Enter' || !e.target.dataset.f) return;
+  e.preventDefault();
+  const all = [...$('countList').querySelectorAll('input[data-f]')];
+  const next = all[all.indexOf(e.target) + 1];
+  e.target.dispatchEvent(new Event('change', {bubbles:true}));
+  if(next){ next.focus(); next.select(); next.closest('.row').scrollIntoView({block:'center', behavior:'smooth'}); }
+  else e.target.blur();
+});
+$('countList').addEventListener('focusin', e => { if(e.target.dataset.f) setTimeout(() => e.target.select(), 0); });
+$('setModeBtn').onclick = () => {
+  if(delMode) setDelMode(false);
+  if(document.activeElement) document.activeElement.blur();
+  setMode = !setMode; $('setModeBtn').classList.toggle('on', setMode);
+  $('addBtn').style.display = setMode ? 'none' : '';
+  renderCount(); if(setMode) toast('設定模式：打完自動儲存');
+};
+
+// ---------- 分頁 ----------
+function tab(which){
+  $('pageCount').hidden = which !== 'count'; $('pageOrder').hidden = which !== 'order';
+  $('tabCount').classList.toggle('on', which === 'count'); $('tabOrder').classList.toggle('on', which === 'order');
+  window.scrollTo(0,0);
+}
+$('tabCount').onclick = () => tab('count');
+$('tabOrder').onclick = () => tab('order');
+
+// ---------- 面板 ----------
+function openSheet(id){ $('mask').classList.add('show'); $(id).classList.add('show'); }
+function closeSheets(){ $('mask').classList.remove('show'); document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show')); }
+$('mask').onclick = closeSheets;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
+$('menuBtn').onclick = () => openSheet('menuSheet');
+
+function openEdit(it){
+  editing = it || null;
+  $('editTitle').textContent = it ? '編輯品項' : '新增品項';
+  const maxNo = Math.max(0, ...items.map(i => i.no || 0));
+  $('fNo').value = it ? (it.no ?? '') : maxNo + 1;
+  $('fName').value = it?.name || ''; $('fUse').value = it?.use || ''; $('fUnit').value = it?.unit || '';
+  $('fMin').value = it ? it.min : 1; $('fOrder').value = it?.order ?? '';
+  $('delBtn').style.display = it ? 'block' : 'none';
+  openSheet('editSheet');
+}
+$('addBtn').onclick = () => openEdit(null);
+async function saveEdit(){
+  if(document.activeElement) document.activeElement.blur();
+  const name = $('fName').value.trim(); if(!name){ $('fName').focus(); return; }
+  const it = editing || { id: Date.now().toString(36), qty:null, counted:0 };
+  Object.assign(it, {
+    no: $('fNo').value === '' ? null : Number($('fNo').value),
+    name, use: $('fUse').value.trim(), unit: $('fUnit').value.trim(),
+    min: Math.max(0, Number($('fMin').value) || 0),
+    order: $('fOrder').value === '' ? null : Math.max(0, Number($('fOrder').value)),
+    set: true
+  });
+  await putItem(it); items = await getAll(); closeSheets(); render(); toast('已儲存');
+}
+$('saveBtn').onclick = saveEdit;
+$('saveTop').onclick = saveEdit;
+// 鍵盤上按「確定／完成／Enter」也會直接儲存
+document.querySelectorAll('#editSheet input.field').forEach(el => el.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); saveEdit(); }
+}));
+async function removeItems(list){
+  const d = (await getMeta('deleted')) || [];
+  for(const it of list){ await delItem(it.id); if(it.id.startsWith('s') && !d.includes(it.id)) d.push(it.id); }
+  await setMeta('deleted', d);
+  items = await getAll();
+}
+function setDelMode(on){
+  if(on && setMode){ setMode = false; $('setModeBtn').classList.remove('on'); }
+  delMode = on; picked.clear();
+  $('delbar').classList.toggle('show', on);
+  document.querySelector('nav').style.display = on ? 'none' : '';
+  $('addBtn').style.display = on ? 'none' : '';
+  render();
+}
+$('delModeBtn').onclick = () => setDelMode(!delMode);
+$('delCancel').onclick = () => setDelMode(false);
+$('delGo').onclick = async () => {
+  const list = items.filter(i => picked.has(i.id)); if(!list.length) return;
+  const nos = list.map(i => i.no).sort((a,b)=>a-b).join('、');
+  if(!confirm(`確定刪除 ${list.length} 項？\n編號：${nos}\n其他品項編號不變。`)) return;
+  await removeItems(list); setDelMode(false); toast(`已刪除 ${list.length} 項`);
+};
+$('delBtn').onclick = async () => {
+  if(!editing || !confirm(`確定刪除「${editing.name}」？`)) return;
+  await delItem(editing.id);
+  // 記住刪掉的預設品項，之後更新版本也不會再加回來；其他品項編號不變
+  if(editing.id.startsWith('s')){ const d = (await getMeta('deleted')) || []; if(!d.includes(editing.id)){ d.push(editing.id); await setMeta('deleted', d); } }
+  items = await getAll(); closeSheets(); render(); toast(`已刪除 #${editing.no ?? ''}，其他編號不變`);
+};
+
+// ---------- 叫貨清單輸出 ----------
+async function shareOrDownload(blob, filename){
+  const file = new File([blob], filename, {type: blob.type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file]}); return; }catch(e){ if(e.name==='AbortError') return; }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+const csvCell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+function csvBlob(head, rows){ return new Blob(['\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\n')],{type:'text/csv'}); }
+const fileDate = () => today().replace(/\//g,'-');
+
+$('copyOrder').onclick = async () => {
+  const low = items.filter(isLow).sort(sortByNo);
+  if(!low.length){ toast('目前沒有需要叫貨的品項'); return; }
+  const text = `【叫貨清單】${today()}\n` + low.map((i,n) =>
+    `${n+1}. ${i.name}：${need(i)}${i.unit}（現有 ${i.qty}${i.unit}）${i.use?'－'+i.use:''}`).join('\n');
+  try{ await navigator.clipboard.writeText(text); toast('已複製，可貼到 LINE 或 Email'); }
+  catch{ if(navigator.share) navigator.share({text}); else prompt('請手動複製', text); }
+};
+$('csvOrder').onclick = () => {
+  const low = items.filter(isLow).sort(sortByNo);
+  if(!low.length){ toast('目前沒有需要叫貨的品項'); return; }
+  shareOrDownload(csvBlob(['編號','品名','用途','現有','最低庫存','叫貨數量','單位'],
+    low.map(i=>[i.no,i.name,i.use,i.qty,i.min,need(i),i.unit])), `叫貨清單-${fileDate()}.csv`);
+};
+
+// ---------- 選單功能 ----------
+$('newRound').onclick = async () => {
+  if(!confirm('要清空所有盤點數量，開始新一輪嗎？\n（品項設定會保留）')) return;
+  for(const i of items){ i.qty = null; await putItem(i); }
+  render(); closeSheets(); tab('count'); toast('已開始新一輪盤點');
+};
+$('exportAll').onclick = () => {
+  shareOrDownload(csvBlob(['編號','品名','用途','單位','最低庫存','每次叫貨量','盤點數量','狀態'],
+    [...items].sort(sortByNo).map(i=>[i.no,i.name,i.use,i.unit,i.min,i.order,i.qty,
+      i.qty===null?'未盤點':isLow(i)?'需叫貨':'足夠'])), `盤點結果-${fileDate()}.csv`);
+};
+$('backup').onclick = () => shareOrDownload(
+  new Blob([JSON.stringify({app:'supply-count',version:1,items})],{type:'application/json'}), `盤點備份-${fileDate()}.json`);
+$('restore').onclick = () => $('jsonInput').click();
+let textMode = 'copy';
+$('backupText').onclick = () => {
+  textMode = 'copy';
+  $('textTitle').textContent = '備份文字';
+  $('textNote').textContent = '按「全部複製」，貼到「備忘錄」或 LINE 傳給自己存起來。還原時用「貼上文字還原」。';
+  $('textBox').value = JSON.stringify({app:'supply-count',version:1,items});
+  $('textAct').textContent = '全部複製';
+  closeSheets(); openSheet('textSheet');
+};
+$('restoreText').onclick = () => {
+  textMode = 'paste';
+  $('textTitle').textContent = '貼上文字還原';
+  $('textNote').textContent = '把之前複製的備份文字整段貼到下面，再按「還原」。';
+  $('textBox').value = ''; $('textAct').textContent = '還原';
+  closeSheets(); openSheet('textSheet');
+};
+$('textAct').onclick = async () => {
+  const box = $('textBox');
+  if(textMode === 'copy'){
+    box.focus(); box.select(); box.setSelectionRange(0, box.value.length);
+    let ok = false;
+    try{ await navigator.clipboard.writeText(box.value); ok = true; }catch{ try{ ok = document.execCommand('copy'); }catch{} }
+    toast(ok ? '已複製，請貼到備忘錄保存' : '請長按文字框 → 全選 → 拷貝');
+    return;
+  }
+  try{
+    const data = JSON.parse(box.value.trim()); const list = data.items || data;
+    if(!Array.isArray(list)) throw 0;
+    for(const it of list) if(it && it.id && it.name) await putItem(it);
+    items = await getAll(); render(); closeSheets(); toast(`已還原 ${list.length} 項`);
+  }catch{ alert('文字格式不對，請確認是完整複製的備份文字'); }
+};
+$('jsonInput').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const data = JSON.parse(await f.text()); const list = data.items || data;
+    if(!Array.isArray(list)) throw 0;
+    if(!confirm(`要還原 ${list.length} 個品項嗎？`)) return;
+    for(const it of list) if(it && it.id && it.name) await putItem(it);
+    items = await getAll(); render(); closeSheets(); toast('還原完成');
+  }catch{ alert('這不是正確的備份檔'); }
+  e.target.value = '';
+};
+
+// CSV 匯入
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', q=false;
+  text = text.replace(/^\ufeff/,'');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cell); cell=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cell); rows.push(row); row=[]; cell=''; }
+    else cell+=c;
+  }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+$('importCsv').onclick = () => $('csvInput').click();
+$('csvInput').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rows = parseCSV(await f.text()); e.target.value = '';
+  if(rows.length < 2){ alert('檔案裡沒有資料'); return; }
+  const head = rows[0].map(h => h.trim());
+  const col = keys => head.findIndex(h => keys.some(k => h.includes(k)));
+  const c = { no:col(['編號','序號','項次']), name:col(['品名','名稱','品項']), use:col(['用途','站別','備註']),
+    unit:col(['單位']), min:col(['最低','安全']), order:col(['叫貨','訂購']), qty:col(['數量','庫存','現有','盤點']) };
+  if(c.name < 0){ alert('找不到「品名」欄位，請確認第一列標題'); return; }
+  let add=0, upd=0;
+  for(const r of rows.slice(1)){
+    const name = (r[c.name]||'').trim(); if(!name) continue;
+    const num = k => c[k] >= 0 && r[c[k]] !== undefined && r[c[k]].trim() !== '' ? parseFloat(r[c[k]]) : undefined;
+    const txt = k => c[k] >= 0 ? (r[c[k]]||'').trim() : undefined;
+    let it = items.find(i => i.name === name);
+    if(it) upd++; else { it = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), name, use:'', unit:'', min:1, order:null, qty:null, counted:0, no:null }; add++; }
+    if(num('no') !== undefined) it.no = num('no');
+    if(txt('use')) it.use = txt('use');
+    if(txt('unit')) it.unit = txt('unit');
+    if(num('min') !== undefined) it.min = num('min');
+    if(num('order') !== undefined) it.order = num('order');
+    if(num('qty') !== undefined) it.qty = num('qty');
+    await putItem(it); if(!items.includes(it)) items.push(it);
+  }
+  items = await getAll(); render(); closeSheets(); toast(`新增 ${add} 項、更新 ${upd} 項`);
+};
+
+// ---------- 啟動 ----------
+(async () => {
+  db = await openDB();
+  if(navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  // 載入或更新預設品項：已盤點的數量與最低庫存會保留
+  if((await getMeta('seedVer') || 0) < 4){
+    const deleted = (await getMeta('deleted')) || [];
+    for(const s of SEED){
+      if(deleted.includes(s.id)) continue;
+      const cur = await req(os(STORE,'readonly').get(s.id));
+      if(cur){ Object.assign(cur, {no:s.no, name:s.name, use:s.use, unit:s.unit}); if(!cur.set) cur.order = s.order; } // 你設定過的下限、叫貨量永遠不會被覆蓋
+      await putItem(cur || s);
+    }
+    await setMeta('seedVer', 4);
+  }
+  items = await getAll();
+  render();
+})();
+</script>
+</body>
+</html>
